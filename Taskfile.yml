@@ -1,0 +1,50 @@
+version: '3'
+
+# Environment variables:
+# - GITHUB_REPO: Repository to analyze (format: "owner/repo", default: "pbstck/app")
+# - GITHUB_DAYS: Number of days to analyze (default: 60)
+# - GITHUB_TOKEN: GitHub personal access token (required)
+#
+# Example usage:
+#   GITHUB_REPO=owner/repo GITHUB_DAYS=30 task run
+
+tasks:
+  default:
+    desc: "Build and run the GitHub stats analyzer"
+    cmds:
+      - task: build
+      - task: run
+
+  install:
+    desc: "Install dependencies"
+    cmds:
+      - pnpm install
+
+  build:
+    desc: "Compile TypeScript to JavaScript"
+    cmds:
+      - pnpm build
+    sources:
+      - src/**/*.ts
+      - tsconfig.json
+    generates:
+      - dist/**/*.js
+
+  run:
+    desc: "Run the GitHub stats analyzer"
+    deps:
+      - build
+    cmds:
+      - node dist/index.js
+
+  clean:
+    desc: "Clean output and build directories"
+    cmds:
+      - rm -rf output/
+      - rm -rf dist/
+
+  all:
+    desc: "Build and run (same as default)"
+    cmds:
+      - task: build
+      - task: run
