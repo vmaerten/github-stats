@@ -10,3 +10,6 @@ jobs:
     steps:
       - name: Run pull request stats
         uses: flowwer-dev/pull-request-stats@main
+        with:
+          token: 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
+          organization: pbstck
