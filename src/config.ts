@@ -1,11 +1,11 @@
 // Parse repository from environment variable or use default
 function parseRepository(): { owner: string; repo: string } {
-  const envRepo = process.env.GITHUB_REPO;
+  const envRepo = process.env.REPO;
 
   if (envRepo) {
     const parts = envRepo.split("/");
     if (parts.length !== 2) {
-      throw new Error(`Invalid GITHUB_REPO format: "${envRepo}". Expected format: "owner/repo"`);
+      throw new Error(`Invalid REPO format: "${envRepo}". Expected format: "owner/repo"`);
     }
     return {
       owner: parts[0],
@@ -22,12 +22,12 @@ function parseRepository(): { owner: string; repo: string } {
 
 // Parse period days from environment variable or use default
 function parsePeriodDays(): number {
-  const envDays = process.env.GITHUB_DAYS;
+  const envDays = process.env.DAYS;
 
   if (envDays) {
     const days = parseInt(envDays, 10);
     if (isNaN(days) || days <= 0) {
-      throw new Error(`Invalid GITHUB_DAYS value: "${envDays}". Expected a positive number.`);
+      throw new Error(`Invalid DAYS value: "${envDays}". Expected a positive number.`);
     }
     return days;
   }
@@ -38,15 +38,15 @@ function parsePeriodDays(): number {
 
 export const config = {
   // GitHub repository to analyze
-  // Can be overridden with GITHUB_REPO environment variable (format: "owner/repo")
+  // Can be overridden with REPO environment variable (format: "owner/repo")
   repository: parseRepository(),
 
   // Time period for analysis (in days)
-  // Can be overridden with GITHUB_DAYS environment variable
+  // Can be overridden with DAYS environment variable
   periodDays: parsePeriodDays(),
 
   // GitHub personal access token (from environment variable)
-  githubToken: process.env.GITHUB_TOKEN,
+  githubToken: process.env.TOKEN,
 
   // Output format: "markdown" or "csv"
   outputFormat: "markdown" as "markdown" | "csv"

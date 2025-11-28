@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Comments Viewer</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <style>
+    :root {
+      /* GitHub Dark Theme - Enhanced */
+      --color-canvas-default: #0d1117;
+      --color-canvas-subtle: #161b22;
+      --color-canvas-inset: #010409;
+      --color-canvas-overlay: #1c2128;
+      --color-border-default: #30363d;
+      --color-border-muted: #21262d;
+      --color-border-subtle: rgba(240,246,252,0.1);
+      --color-fg-default: #e6edf3;
+      --color-fg-muted: #9ca3af;
+      --color-fg-subtle: #6e7681;
+      --color-accent-fg: #58a6ff;
+      --color-accent-emphasis: #1f6feb;
+      --color-success-fg: #3fb950;
+      --color-success-emphasis: #238636;
+      --color-attention-fg: #d29922;
+      --color-danger-fg: #f85149;
+      --color-done-fg: #a371f7;
+      --color-timeline-badge-bg: #21262d;
+      --color-neutral-muted: rgba(110,118,129,0.4);
+
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+
+      /* Transitions */
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.25s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--color-canvas-default);
+      color: var(--color-fg-default);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Header */
+    .AppHeader {
+      background: rgba(22, 27, 34, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-border-default);
+      padding: 16px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .AppHeader-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .AppHeader-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--color-fg-default);
+      font-weight: 600;
+      font-size: 17px;
+      transition: opacity var(--transition-fast);
+    }
+
+    .AppHeader-logo:hover {
+      opacity: 0.8;
+    }
+
+    .AppHeader-logo svg {
+      width: 32px;
+      height: 32px;
+      fill: currentColor;
+      transition: transform var(--transition-normal);
+    }
+
+    .AppHeader-logo:hover svg {
+      transform: rotate(10deg);
+    }
+
+    .AppHeader-context {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-fg-muted);
+      font-size: 15px;
+    }
+
+    .AppHeader-context-item {
+      color: var(--color-accent-fg);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color var(--transition-fast);
+    }
+
+    .AppHeader-context-item:hover {
+      color: #79c0ff;
+    }
+
+    .AppHeader-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .Counter {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--color-fg-default);
+      background: var(--color-neutral-muted);
+      border-radius: 20px;
+      transition: transform var(--transition-fast);
+    }
+
+    .Counter:hover {
+      transform: scale(1.05);
+    }
+
+    .Counter--success {
+      background: rgba(46, 160, 67, 0.25);
+      color: var(--color-success-fg);
+    }
+
+    /* Drop Zone */
+    .blankslate {
+      max-width: 560px;
+      margin: 140px auto;
+      padding: 56px 48px;
+      text-align: center;
+      border: 2px dashed var(--color-border-default);
+      border-radius: 16px;
+      transition: all var(--transition-normal);
+      background: var(--color-canvas-subtle);
+    }
+
+    .blankslate.drag-over {
+      border-color: var(--color-success-fg);
+      background: rgba(63, 185, 80, 0.08);
+      transform: scale(1.02);
+    }
+
+    .blankslate-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      padding: 16px;
+      background: var(--color-canvas-overlay);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .blankslate-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--color-fg-muted);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .blankslate h2 {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .blankslate p {
+      color: var(--color-fg-muted);
+      margin-bottom: 28px;
+      font-size: 15px;
+    }
+
+    .blankslate input[type="file"] {
+      display: none;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--color-success-emphasis);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+      background: #2ea043;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-fg-default);
+      background: var(--color-canvas-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-secondary:hover {
+      background: var(--color-canvas-overlay);
+      border-color: var(--color-border-muted);
+    }
+
+    .btn-secondary svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    /* Layout */
+    .Layout {
+      display: none;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 32px;
+    }
+
+    .Layout.active {
+      display: flex;
+      gap: 28px;
+    }
+
+    .Layout-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 80px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+
+    .Layout-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Sidebar */
+    .SideNav {
+      background: var(--color-canvas-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .SideNav-title {
+      padding: 16px 18px;
+      font-weight: 600;
+      font-size: 14px;
+      border-bottom: 1px solid var(--color-border-default);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--color-canvas-overlay);
+    }
+
+    .SideNav-title svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--color-fg-muted);
+    }
+
+    .SideNav-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .SideNav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      color: var(--color-fg-default);
+      text-decoration: none;
+      border-bottom: 1px solid var(--color-border-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .SideNav-item:last-child {
+      border-bottom: none;
+    }
+
+    .SideNav-item:hover {
+      background: var(--color-canvas-inset);
+    }
+
+    .SideNav-item.selected {
+      background: rgba(56,139,253,0.12);
+      border-left: 3px solid var(--color-accent-fg);
+      padding-left: 15px;
+    }
+
+    .SideNav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--color-timeline-badge-bg);
+      flex-shrink: 0;
+    }
+
+    .SideNav-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .SideNav-label {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 14px;
+    }
+
+    .SideNav-description {
+      font-size: 12px;
+      color: var(--color-fg-muted);
+      margin-top: 2px;
+    }
+
+    /* Search & Filters */
+    .subnav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--color-border-default);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .subnav-search {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .TextInput {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--color-fg-default);
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: 8px;
+      transition: all var(--transition-fast);
+    }
+
+    .TextInput:focus {
+      outline: none;
+      border-color: var(--color-accent-emphasis);
+      box-shadow: 0 0 0 3px rgba(31,111,235,0.25);
+    }
+
+    .TextInput::placeholder {
+      color: var(--color-fg-subtle);
+    }
+
+    .subnav-filters {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .subnav-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    select.form-select {
+      appearance: none;
+      padding: 8px 36px 8px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-fg-default);
+      background: var(--color-canvas-subtle) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%239ca3af'%3E%3Cpath d='M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z'/%3E%3C/svg%3E") no-repeat right 10px center;
+      background-size: 14px;
+      border: 1px solid var(--color-border-default);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    select.form-select:hover {
+      background-color: var(--color-canvas-overlay);
+    }
+
+    select.form-select:focus {
+      outline: none;
+      border-color: var(--color-accent-emphasis);
+      box-shadow: 0 0 0 3px rgba(31,111,235,0.25);
+    }
+
+    /* PR Container - Collapsible */
+    .pr-container {
+      border: 1px solid var(--color-border-default);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      background: var(--color-canvas-subtle);
+      overflow: hidden;
+      transition: all var(--transition-normal);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pr-container:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .pr-container.collapsed .pr-content {
+      display: none;
+    }
+
+    .pr-container.collapsed .IssueHeader {
+      border-bottom: none;
+    }
+
+    /* PR Header */
+    .IssueHeader {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--color-border-default);
+      cursor: pointer;
+      user-select: none;
+      transition: background var(--transition-fast);
+    }
+
+    .IssueHeader:hover {
+      background: var(--color-canvas-inset);
+    }
+
+    .IssueHeader-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .IssueHeader-toggle {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 4px;
+      fill: var(--color-fg-muted);
+      transition: transform var(--transition-normal);
+    }
+
+    .pr-container.collapsed .IssueHeader-toggle {
+      transform: rotate(-90deg);
+    }
+
+    .IssueHeader-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .IssueHeader-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    .IssueHeader-title .number {
+      color: var(--color-fg-muted);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    .IssueHeader-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .IssueHeader-stats {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .State {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+      border-radius: 2em;
+      white-space: nowrap;
+    }
+
+    .State--merged {
+      color: #fff;
+      background: var(--color-done-fg);
+    }
+
+    .State--open {
+      color: #fff;
+      background: var(--color-success-emphasis);
+    }
+
+    .State svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .IssueHeader-author {
+      color: var(--color-fg-muted);
+      font-size: 14px;
+    }
+
+    .IssueHeader-author a {
+      color: var(--color-fg-default);
+      font-weight: 600;
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+
+    .IssueHeader-author a:hover {
+      color: var(--color-accent-fg);
+    }
+
+    /* PR Content */
+    .pr-content {
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Timeline */
+    .timeline {
+      padding: 20px 24px;
+    }
+
+    .TimelineItem {
+      position: relative;
+      padding-left: 64px;
+      padding-bottom: 28px;
+    }
+
+    .TimelineItem::before {
+      content: '';
+      position: absolute;
+      left: 23px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--color-border-default), transparent);
+    }
+
+    .TimelineItem:last-child::before {
+      display: none;
+    }
+
+    .TimelineItem-avatar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 1;
+    }
+
+    .TimelineItem-avatar img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 3px solid var(--color-canvas-subtle);
+      background: var(--color-timeline-badge-bg);
+      transition: transform var(--transition-fast);
+    }
+
+    .TimelineItem:hover .TimelineItem-avatar img {
+      transform: scale(1.05);
+    }
+
+    .TimelineItem-avatar.target img {
+      border-color: var(--color-success-emphasis);
+      box-shadow: 0 0 0 2px rgba(46, 160, 67, 0.3);
+    }
+
+    /* Comment Box */
+    .comment-box {
+      border: 1px solid var(--color-border-default);
+      border-radius: 10px;
+      background: var(--color-canvas-overlay);
+      transition: all var(--transition-fast);
+    }
+
+    .comment-box:hover {
+      border-color: var(--color-border-muted);
+    }
+
+    .comment-box.highlighted {
+      border-color: var(--color-success-emphasis);
+      box-shadow: 0 0 0 1px var(--color-success-emphasis), var(--shadow-sm);
+    }
+
+    .comment-box-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: var(--color-canvas-inset);
+      border-bottom: 1px solid var(--color-border-default);
+      border-radius: 10px 10px 0 0;
+      font-size: 14px;
+    }
+
+    .comment-box.highlighted .comment-box-header {
+      background: linear-gradient(to right, rgba(46, 164, 79, 0.12), transparent);
+    }
+
+    .comment-box-header-author {
+      font-weight: 600;
+      color: var(--color-fg-default);
+    }
+
+    .comment-box-header-author.target {
+      color: var(--color-success-fg);
+    }
+
+    .comment-box-header-text {
+      color: var(--color-fg-muted);
+    }
+
+    .comment-box-header-timestamp {
+      color: var(--color-fg-muted);
+      text-decoration: none;
+      transition: color var(--transition-fast);
+    }
+
+    .comment-box-header-timestamp:hover {
+      color: var(--color-accent-fg);
+      text-decoration: underline;
+    }
+
+    .comment-box-header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+
+    .Label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+      border-radius: 2em;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .Label--purple {
+      color: #d2a8ff;
+      background: rgba(163,113,247,0.18);
+    }
+
+    .Label--blue {
+      color: #79c0ff;
+      background: rgba(56,139,253,0.18);
+    }
+
+    .Label--green {
+      color: #7ee787;
+      background: rgba(46,160,67,0.18);
+    }
+
+    .Label svg {
+      width: 10px;
+      height: 10px;
+      fill: currentColor;
+    }
+
+    .comment-box-body {
+      padding: 20px;
+    }
+
+    /* File path badge */
+    .file-path {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      color: var(--color-fg-muted);
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: 8px;
+      transition: all var(--transition-fast);
+    }
+
+    .file-path:hover {
+      border-color: var(--color-accent-fg);
+      color: var(--color-accent-fg);
+    }
+
+    .file-path svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    /* Markdown body - Enhanced */
+    .markdown-body {
+      font-size: 15px;
+      line-height: 1.7;
+      word-wrap: break-word;
+    }
+
+    .markdown-body > *:first-child {
+      margin-top: 0;
+    }
+
+    .markdown-body > *:last-child {
+      margin-bottom: 0;
+    }
+
+    .markdown-body p {
+      margin-bottom: 16px;
+    }
+
+    .markdown-body a {
+      color: var(--color-accent-fg);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color var(--transition-fast);
+    }
+
+    .markdown-body a:hover {
+      border-bottom-color: var(--color-accent-fg);
+    }
+
+    .markdown-body strong {
+      font-weight: 600;
+      color: var(--color-fg-default);
+    }
+
+    .markdown-body em {
+      font-style: italic;
+    }
+
+    /* Inline code */
+    .markdown-body code {
+      padding: 3px 7px;
+      margin: 0 1px;
+      font-size: 87%;
+      white-space: break-spaces;
+      background: rgba(110,118,129,0.35);
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    /* Code blocks */
+    .markdown-body pre {
+      position: relative;
+      padding: 0;
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.5;
+      background: var(--color-canvas-default);
+      border: 1px solid var(--color-border-default);
+      border-radius: 10px;
+      margin: 18px 0;
+    }
+
+    .markdown-body pre .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: var(--color-canvas-inset);
+      border-bottom: 1px solid var(--color-border-default);
+      font-size: 12px;
+      color: var(--color-fg-muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    }
+
+    .markdown-body pre .code-header .lang {
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .markdown-body pre .copy-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-fg-muted);
+      background: transparent;
+      border: 1px solid var(--color-border-default);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .markdown-body pre .copy-btn:hover {
+      background: var(--color-canvas-subtle);
+      color: var(--color-fg-default);
+    }
+
+    .markdown-body pre .copy-btn.copied {
+      color: var(--color-success-fg);
+      border-color: var(--color-success-fg);
+    }
+
+    .markdown-body pre code {
+      display: block;
+      padding: 16px;
+      margin: 0;
+      overflow-x: auto;
+      font-size: 100%;
+      line-height: 1.5;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+    }
+
+    /* Blockquotes */
+    .markdown-body blockquote {
+      padding: 12px 20px;
+      margin: 18px 0;
+      color: var(--color-fg-muted);
+      background: rgba(110,118,129,0.08);
+      border-left: 4px solid var(--color-border-default);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .markdown-body blockquote > :first-child {
+      margin-top: 0;
+    }
+
+    .markdown-body blockquote > :last-child {
+      margin-bottom: 0;
+    }
+
+    /* Lists */
+    .markdown-body ul,
+    .markdown-body ol {
+      padding-left: 2em;
+      margin: 16px 0;
+    }
+
+    .markdown-body li {
+      margin: 6px 0;
+    }
+
+    .markdown-body li + li {
+      margin-top: 8px;
+    }
+
+    .markdown-body ul li::marker {
+      color: var(--color-fg-subtle);
+    }
+
+    /* Images */
+    .markdown-body img {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--color-border-default);
+      margin: 8px 0;
+      cursor: pointer;
+      transition: transform var(--transition-fast);
+    }
+
+    .markdown-body img:hover {
+      transform: scale(1.01);
+    }
+
+    /* Horizontal rules */
+    .markdown-body hr {
+      height: 2px;
+      padding: 0;
+      margin: 28px 0;
+      background: linear-gradient(to right, transparent, var(--color-border-default), transparent);
+      border: 0;
+    }
+
+    /* Headings */
+    .markdown-body h1,
+    .markdown-body h2,
+    .markdown-body h3 {
+      margin-top: 28px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+
+    .markdown-body h1 { font-size: 1.6em; }
+    .markdown-body h2 { font-size: 1.35em; }
+    .markdown-body h3 { font-size: 1.15em; }
+
+    /* Tables */
+    .markdown-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+    }
+
+    .markdown-body th,
+    .markdown-body td {
+      padding: 10px 14px;
+      border: 1px solid var(--color-border-default);
+      text-align: left;
+    }
+
+    .markdown-body th {
+      background: var(--color-canvas-inset);
+      font-weight: 600;
+    }
+
+    .markdown-body tr:nth-child(even) {
+      background: rgba(110,118,129,0.05);
+    }
+
+    /* Empty state */
+    .blankslate-narrow {
+      max-width: 450px;
+      margin: 80px auto;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .blankslate-narrow svg {
+      width: 48px;
+      height: 48px;
+      fill: var(--color-fg-subtle);
+      margin-bottom: 16px;
+    }
+
+    .blankslate-narrow h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .blankslate-narrow p {
+      color: var(--color-fg-muted);
+      font-size: 15px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1012px) {
+      .Layout.active {
+        flex-direction: column;
+      }
+      .Layout-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+        order: 2;
+      }
+      .Layout-main {
+        order: 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .AppHeader {
+        padding: 12px 16px;
+      }
+      .Layout {
+        padding: 16px;
+      }
+      .subnav {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .subnav-search {
+        min-width: 100%;
+      }
+      .subnav-filters {
+        flex-wrap: wrap;
+      }
+      .subnav-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .IssueHeader {
+        padding: 14px 16px;
+      }
+      .timeline {
+        padding: 16px;
+      }
+      .TimelineItem {
+        padding-left: 52px;
+      }
+      .TimelineItem-avatar img {
+        width: 40px;
+        height: 40px;
+      }
+      .TimelineItem::before {
+        left: 19px;
+      }
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--color-canvas-default);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--color-border-default);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--color-fg-subtle);
+    }
+
+    /* Lightbox for images */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all var(--transition-normal);
+    }
+
+    .lightbox.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .lightbox img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: var(--color-canvas-subtle);
+      border: none;
+      border-radius: 50%;
+      color: var(--color-fg-default);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+
+    .lightbox-close:hover {
+      background: var(--color-canvas-overlay);
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+  <header class="AppHeader">
+    <div class="AppHeader-content">
+      <div class="AppHeader-logo">
+        <svg viewBox="0 0 16 16">
+          <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
+        </svg>
+        Comments Viewer
+      </div>
+      <div class="AppHeader-context" id="headerContext" style="display:none;">
+        <span>/</span>
+        <a class="AppHeader-context-item" id="repoName" href="#"></a>
+        <span>/</span>
+        <span>Pull requests</span>
+      </div>
+      <div class="AppHeader-user" id="headerUser" style="display:none;">
+        <span id="targetUser" style="color:var(--color-success-fg);font-weight:600;"></span>
+        <span class="Counter Counter--success" id="totalComments">0</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="blankslate" id="dropZone">
+      <div class="blankslate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17,8 12,3 7,8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <h2>Load your comments data</h2>
+      <p>Drop a JSON file here or click to browse</p>
+      <input type="file" id="fileInput" accept=".json">
+      <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM11.78 4.72a.749.749 0 1 1-1.06 1.06L8.75 3.811V9.5a.75.75 0 0 1-1.5 0V3.811L5.28 5.78a.749.749 0 1 1-1.06-1.06l3.25-3.25a.749.749 0 0 1 1.06 0l3.25 3.25Z"/>
+        </svg>
+        Choose a file
+      </button>
+    </div>
+
+    <div class="Layout" id="mainLayout">
+      <div class="Layout-main">
+        <div class="subnav">
+          <div class="subnav-search">
+            <input type="text" class="TextInput" id="searchInput" placeholder="Search in comments...">
+          </div>
+          <div class="subnav-filters">
+            <select class="form-select" id="authorFilter">
+              <option value="">All PR authors</option>
+            </select>
+            <select class="form-select" id="typeFilter">
+              <option value="">All types</option>
+              <option value="review">Code reviews</option>
+              <option value="issue">Discussions</option>
+            </select>
+          </div>
+          <div class="subnav-actions">
+            <button class="btn-secondary" id="expandAllBtn" onclick="toggleAll(false)">
+              <svg viewBox="0 0 16 16"><path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/></svg>
+              Expand all
+            </button>
+            <button class="btn-secondary" id="collapseAllBtn" onclick="toggleAll(true)">
+              <svg viewBox="0 0 16 16"><path d="M12.78 10.78a.749.749 0 0 1-1.06 0L8 7.061 4.28 10.78a.749.749 0 1 1-1.06-1.06l4.25-4.25a.749.749 0 0 1 1.06 0l4.25 4.25a.749.749 0 0 1 0 1.06Z"/></svg>
+              Collapse all
+            </button>
+          </div>
+        </div>
+        <div id="content"></div>
+      </div>
+      <aside class="Layout-sidebar">
+        <div class="SideNav">
+          <div class="SideNav-title">
+            <svg viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+            PR Authors
+            <span class="Counter" id="authorCount">0</span>
+          </div>
+          <div class="SideNav-list" id="authorsList"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Lightbox for images -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">&times;</button>
+    <img id="lightbox-img" src="" alt="">
+  </div>
+
+  <script>
+    let data = null;
+
+    // Custom marked renderer for enhanced code blocks
+    const renderer = new marked.Renderer();
+
+    renderer.code = function(code, language) {
+      const lang = language || 'text';
+      const highlighted = language && hljs.getLanguage(language)
+        ? hljs.highlight(code, { language }).value
+        : escapeHtml(code);
+
+      return `<pre><div class="code-header"><span class="lang">${lang}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div><code class="hljs language-${lang}">${highlighted}</code></pre>`;
+    };
+
+    marked.setOptions({
+      renderer,
+      breaks: true,
+      gfm: true,
+    });
+
+    // Copy code functionality
+    function copyCode(btn) {
+      const code = btn.closest('pre').querySelector('code').textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Lightbox
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Toggle all PRs
+    function toggleAll(collapse) {
+      document.querySelectorAll('.pr-container').forEach(pr => {
+        pr.classList.toggle('collapsed', collapse);
+      });
+    }
+
+    // Check for file parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const fileParam = urlParams.get('file');
+    if (fileParam) {
+      fetch(fileParam)
+        .then(res => {
+          if (!res.ok) throw new Error('File not found');
+          return res.json();
+        })
+        .then(json => {
+          data = json;
+          initViewer();
+        })
+        .catch(err => {
+          console.error('Failed to load file from URL:', err);
+          // Show drop zone if auto-load fails
+        });
+    }
+
+    // Drop zone
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    ['dragenter', 'dragover'].forEach(event => {
+      dropZone.addEventListener(event, e => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(event => {
+      dropZone.addEventListener(event, () => {
+        dropZone.classList.remove('drag-over');
+      });
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) loadFile(file);
+    });
+
+    dropZone.addEventListener('click', e => {
+      if (e.target.tagName !== 'BUTTON') {
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) loadFile(e.target.files[0]);
+    });
+
+    function loadFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          data = JSON.parse(e.target.result);
+          initViewer();
+        } catch (err) {
+          alert('Invalid JSON file');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function initViewer() {
+      dropZone.style.display = 'none';
+      document.getElementById('mainLayout').classList.add('active');
+      document.getElementById('headerContext').style.display = 'flex';
+      document.getElementById('headerUser').style.display = 'flex';
+
+      // Set header info
+      document.getElementById('repoName').textContent = data.metadata.repository;
+      document.getElementById('targetUser').textContent = '@' + data.metadata.username;
+      document.getElementById('totalComments').textContent = data.metadata.totalCount + ' comments';
+
+      // Populate authors
+      const authors = [...new Set(data.conversations.map(c => c.prAuthor))].sort();
+      document.getElementById('authorCount').textContent = authors.length;
+
+      const authorFilter = document.getElementById('authorFilter');
+      const authorsList = document.getElementById('authorsList');
+
+      authors.forEach(author => {
+        const opt = document.createElement('option');
+        opt.value = author;
+        opt.textContent = '@' + author;
+        authorFilter.appendChild(opt);
+
+        const convs = data.conversations.filter(c => c.prAuthor === author);
+        const totalUserComments = convs.reduce((sum, c) => sum + c.userCommentCount, 0);
+
+        const item = document.createElement('div');
+        item.className = 'SideNav-item';
+        item.dataset.author = author;
+        item.innerHTML = `
+          <img class="SideNav-avatar" src="https://github.com/${author}.png?size=64" alt="" onerror="this.style.visibility='hidden'">
+          <div class="SideNav-text">
+            <div class="SideNav-label">@${author}</div>
+            <div class="SideNav-description">${totalUserComments} comments · ${convs.length} PRs</div>
+          </div>
+        `;
+        item.onclick = () => {
+          authorFilter.value = author;
+          render();
+        };
+        authorsList.appendChild(item);
+      });
+
+      // Listeners
+      document.getElementById('searchInput').addEventListener('input', render);
+      document.getElementById('authorFilter').addEventListener('change', render);
+      document.getElementById('typeFilter').addEventListener('change', render);
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT') return;
+
+        if (e.key === 'e') {
+          toggleAll(false);
+        } else if (e.key === 'c') {
+          toggleAll(true);
+        } else if (e.key === 'Escape') {
+          closeLightbox();
+        }
+      });
+
+      render();
+    }
+
+    function render() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const authorFilter = document.getElementById('authorFilter').value;
+      const typeFilter = document.getElementById('typeFilter').value;
+
+      // Update sidebar selection
+      document.querySelectorAll('.SideNav-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.author === authorFilter);
+      });
+
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+
+      // Filter conversations
+      const filtered = data.conversations
+        .filter(conv => !authorFilter || conv.prAuthor === authorFilter)
+        .map(conv => ({
+          ...conv,
+          filteredComments: conv.allComments.filter(c => {
+            if (typeFilter && c.type !== typeFilter) return false;
+            if (search && !c.body.toLowerCase().includes(search)) return false;
+            return true;
+          })
+        }))
+        .filter(conv => conv.filteredComments.length > 0)
+        .sort((a, b) => b.userCommentCount - a.userCommentCount);
+
+      if (filtered.length === 0) {
+        content.innerHTML = `
+          <div class="blankslate-narrow">
+            <svg viewBox="0 0 16 16"><path d="M.75 3h14.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1 0-1.5ZM3 7.75A.75.75 0 0 1 3.75 7h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 7.75Zm3 4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"/></svg>
+            <h3>No results found</h3>
+            <p>Try adjusting your search or filters to find what you're looking for.</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(conv => {
+        const pr = document.createElement('div');
+        pr.className = 'pr-container collapsed';
+
+        const userCommentsInConv = conv.filteredComments.filter(c => c.isTargetUser).length;
+
+        pr.innerHTML = `
+          <div class="IssueHeader" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="IssueHeader-row">
+              <svg class="IssueHeader-toggle" viewBox="0 0 16 16"><path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/></svg>
+              <div class="IssueHeader-content">
+                <h2 class="IssueHeader-title">
+                  ${escapeHtml(conv.prTitle)}<span class="number">#${conv.prNumber}</span>
+                </h2>
+                <div class="IssueHeader-meta">
+                  <span class="State State--merged">
+                    <svg viewBox="0 0 16 16"><path d="M5.45 5.154A4.25 4.25 0 0 0 9.25 7.5h1.378a2.251 2.251 0 1 1 0 1.5H9.25A5.734 5.734 0 0 1 5 7.123v3.505a2.25 2.25 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.95-.218ZM4.25 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8.5-4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0 0 .005V3.25Z"/></svg>
+                    Merged
+                  </span>
+                  <span class="IssueHeader-author">
+                    <a href="https://github.com/${conv.prAuthor}" onclick="event.stopPropagation()">@${conv.prAuthor}</a> opened this pull request
+                  </span>
+                </div>
+              </div>
+              <div class="IssueHeader-stats">
+                <span class="Counter Counter--success">${userCommentsInConv} target</span>
+                <span class="Counter">${conv.filteredComments.length} total</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const prContent = document.createElement('div');
+        prContent.className = 'pr-content';
+
+        const timeline = document.createElement('div');
+        timeline.className = 'timeline';
+
+        conv.filteredComments.forEach(comment => {
+          const item = document.createElement('div');
+          item.className = 'TimelineItem';
+
+          const isTarget = comment.isTargetUser;
+          const typeLabel = comment.type === 'review'
+            ? '<span class="Label Label--purple"><svg viewBox="0 0 16 16"><path d="M11.28 3.22a.75.75 0 0 1 0 1.06l-6 6a.75.75 0 0 1-1.06-1.06l6-6a.75.75 0 0 1 1.06 0Z"/><path d="M15.28 3.22a.75.75 0 0 1 0 1.06l-6 6a.75.75 0 0 1-1.06-1.06l6-6a.75.75 0 0 1 1.06 0Z"/></svg>Code</span>'
+            : '<span class="Label Label--blue"><svg viewBox="0 0 16 16"><path d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>Discussion</span>';
+          const targetLabel = isTarget ? '<span class="Label Label--green"><svg viewBox="0 0 16 16"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm3.28 5.78a.75.75 0 0 0-1.06-1.06L7 7.94 5.78 6.72a.75.75 0 0 0-1.06 1.06l1.75 1.75a.75.75 0 0 0 1.06 0l3.75-3.75Z"/></svg>Target</span>' : '';
+
+          item.innerHTML = `
+            <div class="TimelineItem-avatar${isTarget ? ' target' : ''}">
+              <img src="https://github.com/${comment.author}.png?size=96" alt="${comment.author}" onerror="this.style.visibility='hidden'">
+            </div>
+            <div class="comment-box${isTarget ? ' highlighted' : ''}">
+              <div class="comment-box-header">
+                <span class="comment-box-header-author${isTarget ? ' target' : ''}">@${comment.author}</span>
+                <span class="comment-box-header-text">commented</span>
+                <a class="comment-box-header-timestamp" href="${comment.htmlUrl}" target="_blank" rel="noopener">${formatTime(comment.createdAt)}</a>
+                <div class="comment-box-header-actions">
+                  ${targetLabel}
+                  ${typeLabel}
+                </div>
+              </div>
+              <div class="comment-box-body">
+                ${comment.path ? `
+                  <a href="${comment.htmlUrl}" target="_blank" class="file-path">
+                    <svg viewBox="0 0 16 16"><path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"/></svg>
+                    ${comment.path}${comment.line ? ':' + comment.line : ''}
+                  </a>
+                ` : ''}
+                <div class="markdown-body">${marked.parse(comment.body)}</div>
+              </div>
+            </div>
+          `;
+
+          timeline.appendChild(item);
+        });
+
+        prContent.appendChild(timeline);
+        pr.appendChild(prContent);
+        content.appendChild(pr);
+      });
+
+      // Add click handlers for images
+      document.querySelectorAll('.markdown-body img').forEach(img => {
+        img.addEventListener('click', e => {
+          e.stopPropagation();
+          openLightbox(img.src);
+        });
+      });
+    }
+
+    function formatTime(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / 86400000);
+
+      if (days === 0) {
+        const hours = Math.floor(diff / 3600000);
+        if (hours === 0) {
+          const mins = Math.floor(diff / 60000);
+          return mins <= 1 ? 'just now' : `${mins} minutes ago`;
+        }
+        return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+      }
+      if (days === 1) return 'yesterday';
+      if (days < 7) return `${days} days ago`;
+      if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

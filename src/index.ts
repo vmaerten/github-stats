@@ -13,9 +13,9 @@ async function main() {
 
   // Validate GitHub token
   if (!config.githubToken) {
-    console.error("Error: GITHUB_TOKEN environment variable is not set.");
+    console.error("Error: TOKEN environment variable is not set.");
     console.error("Please set your GitHub personal access token:");
-    console.error("  export GITHUB_TOKEN=your_token_here");
+    console.error("  export TOKEN=your_token_here");
     console.error("\nYou can create a token at: https://github.com/settings/tokens");
     process.exit(1);
   }

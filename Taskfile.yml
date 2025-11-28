@@ -1,19 +1,41 @@
 version: '3'
 
-# Environment variables:
-# - GITHUB_REPO: Repository to analyze (format: "owner/repo", default: "pbstck/app")
-# - GITHUB_DAYS: Number of days to analyze (default: 60)
-# - GITHUB_TOKEN: GitHub personal access token (required)
-#
-# Example usage:
-#   GITHUB_REPO=owner/repo GITHUB_DAYS=30 task run
-
 tasks:
   default:
     desc: "Build and run the GitHub stats analyzer"
     cmds:
       - task: build
       - task: run
+
+  help:
+    desc: "Show available commands and environment variables"
+    cmds:
+      - |
+        echo "GitHub Stats - Available Commands"
+        echo "=================================="
+        echo ""
+        echo "  task run       - Run the PR statistics analyzer"
+        echo "  task comments  - Extract comments from a specific user"
+        echo "  task viewer    - Open the comments viewer in browser"
+        echo "  task build     - Compile TypeScript to JavaScript"
+        echo "  task install   - Install dependencies"
+        echo "  task clean     - Clean output and build directories"
+        echo ""
+        echo "Environment Variables"
+        echo "====================="
+        echo ""
+        echo "  TOKEN  - GitHub personal access token (required)"
+        echo "  REPO   - Repository to analyze, format: owner/repo (default: pbstck/app)"
+        echo "  DAYS   - Number of days to analyze (default: 30)"
+        echo "  USER   - Username to extract comments from (required for 'task comments')"
+        echo ""
+        echo "Examples"
+        echo "========"
+        echo ""
+        echo "  TOKEN=ghp_xxx task run"
+        echo "  TOKEN=ghp_xxx REPO=owner/repo DAYS=60 task run"
+        echo "  TOKEN=ghp_xxx REPO=owner/repo USER=username task comments"
+        echo ""
 
   install:
     desc: "Install dependencies"
@@ -36,6 +58,22 @@ tasks:
       - build
     cmds:
       - node dist/index.js
+
+  comments:
+    desc: "Extract comments from a specific user"
+    deps:
+      - build
+    cmds:
+      - node dist/extract-comments.js
+
+  viewer:
+    desc: "Open the comments viewer in browser"
+    cmds:
+      - echo "Starting server on http://localhost:3333/viewer/"
+      - echo "Drag & drop your JSON file to load it"
+      - echo "Press Ctrl+C to stop"
+      - sleep 1 && (xdg-open http://localhost:3333/viewer/ || open http://localhost:3333/viewer/ || start http://localhost:3333/viewer/) &
+      - npx --yes serve . -l 3333
 
   clean:
     desc: "Clean output and build directories"
